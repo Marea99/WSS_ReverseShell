@@ -11,7 +11,7 @@ import sys
 import getpass
 
 # Server configuration
-SERVER_IP   = "192.168.2.152"
+SERVER_IP   = "192.168.1.94"
 SERVER_PORT = 4444
 
 # Paths to certificates/keys
@@ -56,6 +56,7 @@ def main():
     # Build TLS context and wrap socket
     context = create_client_context(CA_FILE, CLIENT_CERT, CLIENT_KEY)
     raw_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    
     # Pass server_hostname for SNI and hostname verification
     tls_sock = context.wrap_socket(
         raw_sock,
