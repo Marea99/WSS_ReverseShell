@@ -23,9 +23,9 @@ from tkinter import scrolledtext
 
 # Configuration server
 HOST = '0.0.0.0'    # Listen on all available interfaces
-PORT = 4444  # Port for incoming connections
+PORT = 4444         # Port for incoming connections
 
-CLIENT_NUM = 5 # Maximum number of clients we want to listen for
+CLIENT_NUM = 5      # Maximum number of clients we want to listen for
 
 # Authentication configuration
 # In a production environment, this should be securely stored (not hardcoded)
@@ -34,7 +34,7 @@ PASSWORD = "2025@UPC"  # We can change this password for a stronger one
 def create_server_context(ca_file, cert_file, key_file):
     """
     - Purpose.CLIENT_AUTH enforces client certs.
-    - load_cert_chain supplies our server’s cert+key.
+    - load_cert_chain supplies our server cert+key.
     - load_verify_locations trusts only our CA.
     - verify_mode=CERT_REQUIRED turns on mutual-TLS.
     """
@@ -108,7 +108,7 @@ class ReverseShellGUI:
         """
         # TLS Handshake
         try:
-            conn = self.tls_ctx.wrap_socket(raw_conn, server_side=True)    # 
+            conn = self.tls_ctx.wrap_socket(raw_conn, server_side=True)  
             self.write_output(f"[*] TLS handshake with {addr}\n")
         except ssl.SSLError as e:
             self.write_output(f"[!] TLS handshake error from {addr}: {e}\n")
