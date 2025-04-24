@@ -71,11 +71,11 @@ class ReverseShellGUI:
         self.write_output(f"[*] Listening on {HOST}:{PORT} (TLS)\n")
 
 
-        # 1) Client registry for multiple connections
+        # Client registry for multiple connections
         self.clients = {}       # client_id -> (ssl_conn, addr)
         self.next_client_id = 1
 
-        # 2) GUI widget to select active client
+        # GUI widget to select active client
         import tkinter.ttk as ttk
         self.client_selector = ttk.Combobox(master, values=[], state='readonly')
         self.client_selector.pack(pady=(0,10))
