@@ -70,7 +70,6 @@ class ReverseShellGUI:
         self.server_socket.listen(CLIENT_NUM)
         self.write_output(f"[*] Listening on {HOST}:{PORT} (TLS)\n")
 
-
         # Client registry for multiple connections
         self.clients = {}       # client_id -> (ssl_conn, addr)
         self.next_client_id = 1
@@ -142,25 +141,6 @@ class ReverseShellGUI:
             self.write_output(f"[*] Client {client_id} disconnected\n")
             self.update_client_selector()
 
-    def update_client_selector(self):
-        """
-        Update the GUI dropdown of available client IDs.
-        """
-        client_ids = list(self.clients.keys())
-        self.client_selector['values'] = client_ids
-        if client_ids:
-            self.client_selector.set(client_ids[-1])
-        else:
-            self.client_selector.set("No client")
-
-
-    def write_output(self, message):
-        """
-        Insert a message into the output area and auto-scroll to the end.
-        """
-        self.output_area.insert(tk.END, message)
-        self.output_area.see(tk.END)
-
     def authenticate_client(self, conn):
         """
         Authenticate the client using a password
@@ -180,7 +160,25 @@ class ReverseShellGUI:
                 return False
         except Exception as e:
             self.write_output(f"[!] Authentication error: {e}\n")
-            return False
+        return False
+
+    def update_client_selector(self):
+        """
+        Update the GUI dropdown of available client IDs.
+        """
+        client_ids = list(self.clients.keys())
+        self.client_selector['values'] = client_ids
+        if client_ids:
+            self.client_selector.set(client_ids[-1])
+        else:
+            self.client_selector.set("No client")
+
+    def write_output(self, message):
+        """
+        Insert a message into the output area and auto-scroll to the end.
+        """
+        self.output_area.insert(tk.END, message)
+        self.output_area.see(tk.END)
 
     def send_command(self, event=None):
         """

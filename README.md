@@ -25,6 +25,7 @@ WSS_ReverseShell/
 │   ├── client.key
 │   ├── client.csr
 │   └── client.crt
+├── generate_certs.sh
 ├── server.py
 ├── client.py
 └── README.md          
